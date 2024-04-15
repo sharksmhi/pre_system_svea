@@ -2,7 +2,7 @@ from pathlib import Path
 
 import requests
 
-from pre_system_svea.resource import Resources
+from ctd_pre_system.resource import Resources
 
 import math
 import numpy as np
@@ -117,20 +117,20 @@ class StationFile(StationMethods):
         response.encoding = self._primary_encoding
         with open(self._primary_file_path, 'w', encoding=self._primary_encoding) as fid:
             fid.write(response.text)
-        logger.info(f'Primary station file updated in pre_system_svea')
+        logger.info(f'Primary station file updated in ctd_pre_system')
 
     def _load_file(self):
         print('self._primary_file_path', self._primary_file_path)
         if self._primary_file_path and self._primary_file_path.exists():
             file_path = self._primary_file_path
             encoding = self._primary_encoding
-            logger.info(f'Using primary station file i pre_system_svea: {file_path}')
+            logger.info(f'Using primary station file i ctd_pre_system: {file_path}')
         elif self._backup_file_path and self._backup_file_path.exists():
             file_path = self._backup_file_path
             encoding = self._backup_encoding
-            logger.info(f'Using backup station file i pre_system_svea: {file_path}')
+            logger.info(f'Using backup station file i ctd_pre_system: {file_path}')
         else:
-            raise FileNotFoundError('Could not find station file in pre_system_svea')
+            raise FileNotFoundError('Could not find station file in ctd_pre_system')
         print('file_path', file_path)
         self._df = pd.read_csv(file_path, sep='\t', encoding=encoding)
         self._df['MEDIA'] = self._df['MEDIA'].fillna('')

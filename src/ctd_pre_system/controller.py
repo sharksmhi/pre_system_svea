@@ -9,10 +9,10 @@ import psutil
 from file_explorer import psa
 from file_explorer import seabird
 from file_explorer.seabird import paths
-from pre_system_svea.ctd_config import CtdConfig
-from pre_system_svea.operator import Operators
-from pre_system_svea.ship import Ships
-from pre_system_svea.station import Stations
+from ctd_pre_system.ctd_config import CtdConfig
+from ctd_pre_system.operator import Operators
+from ctd_pre_system.ship import Ships
+from ctd_pre_system.station import Stations
 from svepa import exceptions as svepa_exceptions
 import svepa
 

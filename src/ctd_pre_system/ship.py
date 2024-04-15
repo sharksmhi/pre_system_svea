@@ -1,5 +1,5 @@
 
-from pre_system_svea.resource import Resources
+from ctd_pre_system.resource import Resources
 
 
 class Ships:
