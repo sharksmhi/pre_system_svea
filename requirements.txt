@@ -1,5 +1,0 @@
-psutil
-requests
-pyyaml
-git+https://github.com/sharksmhi/svepa.git@v0.2.0
-git+https://github.com/sharksmhi/file_explorer.git@v0.2.0

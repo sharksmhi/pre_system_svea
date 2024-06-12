@@ -13,8 +13,12 @@ from ctd_pre_system.ctd_config import CtdConfig
 from ctd_pre_system.operator import Operators
 from ctd_pre_system.ship import Ships
 from ctd_pre_system.station import Stations
-from svepa import exceptions as svepa_exceptions
-import svepa
+
+svepa = None
+try:
+    import svepa
+except ImportError:
+    pass
 
 
 class Controller:
@@ -56,6 +60,8 @@ class Controller:
         self._paths.set_server_root_directory(directory)
 
     def get_svepa_info(self, credentials_path):
+        if not svepa:
+            return {}
         info = svepa.get_current_station_info(path_to_svepa_credentials=credentials_path)
         return info
 
