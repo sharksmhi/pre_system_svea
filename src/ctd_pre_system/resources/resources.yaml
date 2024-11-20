@@ -19,6 +19,14 @@ stations:
     path: 'root/stationslista_matprogram.txt'
     encoding: 'cp1252'
     description: 'One column text file listing stations to filter on'
+  pressure_matrix:
+    path: 'root/pressure_matrix.txt'
+
+auto_fire:
+  pressure_matrix:
+    path: 'root/pressure_matrix.txt'
+  bottle_order:
+    path: 'root/auto_fire_bottle_order.yaml'
 
 ships:
   path: 'root/ships.txt'
