@@ -321,7 +321,8 @@ class Controller:
 
     def get_bottle_order(self, nr_active_bottles: int, nr_bottles: int = 24) -> list[int]:
         bottle_order = self.auto_fire_bottle_order.get_bottle_order(nr_bottles)
-        return bottle_order[:nr_active_bottles][::-1]
+        # return bottle_order[:nr_active_bottles][::-1]
+        return sorted(bottle_order[:nr_active_bottles], reverse=True)
 
     def get_auto_fire_info_for_station(self, station: str, nr_bottles: int = 24, nr_active_bottles: int = None) -> psa.AUTO_FIRE_DATA_DATATYPE:
         pressure_mapping = self.get_pressure_mapping_for_station(station)
