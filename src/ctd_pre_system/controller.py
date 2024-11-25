@@ -340,14 +340,17 @@ class Controller:
         for depth, pres in new_pressure_mapping.items():
             #if not pres:
             #    continue
-            data.append(dict(
-                depth=depth,
-                index=index,
-                # BottleNumber=bottle_order[index],
-                BottleNumber=new_bottle_order[index],
-                FireAt=pres
-            ))
-            index += 1
+            try:
+                data.append(dict(
+                    depth=depth,
+                    index=index,
+                    # BottleNumber=bottle_order[index],
+                    BottleNumber=new_bottle_order[index],
+                    FireAt=pres
+                ))
+                index += 1
+            except IndexError:
+                break
         return data
 
     def set_auto_fire_bottles(self, data: psa.AUTO_FIRE_DATA_DATATYPE, station: str) -> None:
