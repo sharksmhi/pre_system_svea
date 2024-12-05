@@ -1,4 +1,6 @@
 import pathlib
+from typing import Dict
+
 import pandas as pd
 import numpy as np
 from ctd_pre_system import resource
@@ -75,10 +77,15 @@ class StationPressures:
         self._station_basin = station_basin
         self._pressure_matrix = pressure_matrix
 
-    def get_depth_pressure_mapping_for_station(self, station: str) -> dict[int, float]:
+    def get_depth_pressure_mapping_for_basin(self, basin: str) -> dict[str, dict[int, float] | str]:
+        mapping = self._pressure_matrix.get_depth_pressure_mapping_for_basin(basin)
+        return dict(pressure_mapping=mapping, basin=basin)
+
+    def get_depth_pressure_mapping_for_station(self, station: str) -> dict[str, dict[int, float] | str | None]:
         basin = self._station_basin.get_basin(station)
         mapping = self._pressure_matrix.get_depth_pressure_mapping_for_basin(basin)
-        return mapping
+        return dict(pressure_mapping=mapping, basin=basin)
+        # return mapping
 
 
 class BottleOrder:

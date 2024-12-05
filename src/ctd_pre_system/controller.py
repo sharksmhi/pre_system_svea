@@ -313,8 +313,11 @@ class Controller:
         # ctd_files_obj = get_ctd_files_object(root_path, suffix='.hex')
         # return ctd_files_obj.get_next_serno(**kwargs)
 
-    def get_pressure_mapping_for_station(self, station: str) -> dict[int, float]:
+    def get_pressure_mapping_for_station(self, station: str) -> dict[str, dict[int, float] | str | None]:
         return self.auto_fire_station_pressure.get_depth_pressure_mapping_for_station(station)
+
+    def get_pressure_mapping_for_basin(self, basin: str) -> dict[str, dict[int, float] | str | None]:
+        return self.auto_fire_station_pressure.get_depth_pressure_mapping_for_basin(basin)
 
     def get_current_auto_fire_bottles(self) -> psa.AUTO_FIRE_DATA_DATATYPE:
         return self.seasave_psa.auto_fire_bottles
@@ -325,11 +328,11 @@ class Controller:
         return sorted(bottle_order[:nr_active_bottles], reverse=True)
 
     def get_auto_fire_info_for_station(self, station: str, nr_bottles: int = 24, nr_active_bottles: int = None) -> psa.AUTO_FIRE_DATA_DATATYPE:
-        pressure_mapping = self.get_pressure_mapping_for_station(station)
+        info = self.get_pressure_mapping_for_station(station)
         if not nr_active_bottles:
-            nr_active_bottles = len([True for pres in pressure_mapping.values() if pres])
+            nr_active_bottles = len([True for pres in info['pressure_mapping'].values() if pres])
         new_pressure_mapping = {}
-        for depth, pres in pressure_mapping.items():
+        for depth, pres in info['pressure_mapping'].items():
             if not pres:
                 continue
             if len(new_pressure_mapping) >= nr_active_bottles:
@@ -352,17 +355,26 @@ class Controller:
                 index += 1
             except IndexError:
                 break
-        return data
+        return data, info['basin']
 
-    def set_auto_fire_bottles(self, data: psa.AUTO_FIRE_DATA_DATATYPE, station: str) -> None:
-        pressure_mapping = self.get_pressure_mapping_for_station(station)
+    def set_auto_fire_bottles(self, data: psa.AUTO_FIRE_DATA_DATATYPE, station: str = None, basin: str = None) -> None:
+        if station:
+            info = self.get_pressure_mapping_for_station(station)
+        elif basin:
+            info = self.get_pressure_mapping_for_basin(basin)
+        else:
+            raise Exception('No station och basin given')
+        print('='*100)
+        print('='*100)
+        print(f'{info=}')
         data_with_pressure = []
         for i, d in enumerate(sorted(data, reverse=True, key=lambda x: x['depth'])):
             offset = d.get('offset') or 0
             row_data= dict(
                 index=i,
                 BottleNumber=d['BottleNumber'],
-                FireAt=pressure_mapping[int(d['depth'])] + offset
+                FireAt=info['pressure_mapping'][int(d['depth'])] + offset,
+                depth=d['depth']
             )
             data_with_pressure.append(row_data)
         self._set_auto_fire_bottles(data_with_pressure)
@@ -393,6 +405,7 @@ class Controller:
         self.seasave_psa.auto_fire = False
 
     def set_auto_fire(self, value: bool):
+        print(f'set_auto_fire: {value=}')
         self.seasave_psa.auto_fire = value
         self.seasave_psa.auto_fire_allow_manual_firing = value
 
