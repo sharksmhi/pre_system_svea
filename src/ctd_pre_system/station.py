@@ -50,7 +50,7 @@ class StationsMatprogram(StationMethods):
         self.station_name_list = []
         with open(self._resources.station_filter_file, encoding='cp1252') as fid:
             for line in fid:
-                name = line.strip()
+                name = line.split('\t')[0].strip()
                 if not name:
                     continue
                 if not self._station_file.get_station_info(name):

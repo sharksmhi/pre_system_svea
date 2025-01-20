@@ -22,6 +22,8 @@ class Resources:
         self.update_primary_station_file = False
         self.station_filter_file = None
         self.station_filter_file_encoding = None
+        self.pressure_matrix_file = None
+        self.auto_fire_bottle_order_file = None
 
         self._config = {}
 
@@ -85,6 +87,8 @@ class Resources:
         self.update_primary_station_file = self._config.get('stations', {}).get('primary_station_list_url', {}).get('update', False)
         self.station_filter_file = self._get_path('stations', 'filter')
         self.station_filter_file_encoding = self._get_encoding('stations', 'filter')
+        self.pressure_matrix_file = self._get_path('auto_fire', 'pressure_matrix')
+        self.auto_fire_bottle_order_file = self._get_path('auto_fire', 'bottle_order')
 
         
 if __name__ == '__main__':

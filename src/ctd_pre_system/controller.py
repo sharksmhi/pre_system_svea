@@ -13,6 +13,8 @@ from ctd_pre_system.ctd_config import CtdConfig
 from ctd_pre_system.operator import Operators
 from ctd_pre_system.ship import Ships
 from ctd_pre_system.station import Stations
+from ctd_pre_system import auto_fire
+from ctd_pre_system import exceptions
 
 svepa = None
 try:
@@ -33,6 +35,17 @@ class Controller:
         # self.stations = Stations(update_primary=kwargs.get('update_primary_station_list'))
         self.stations = Stations()
         self.ships = Ships()
+
+        self.auto_fire_station_pressure = auto_fire.get_station_pressure_object()
+        self.auto_fire_bottle_order = auto_fire.get_bottle_order_object()
+
+        self._seasave_psa = None
+
+    @property
+    def seasave_psa(self):
+        if not self._seasave_psa:
+            self._seasave_psa = self._get_main_psa_object()
+        return self._seasave_psa
 
     @property
     def ctd_config_root_directory(self):
@@ -115,14 +128,14 @@ class Controller:
         obj = seabird.XmlconFile(xmlcon_file_path, ignore_pattern=True)
         return obj
 
-    def _get_main_psa_object(self):
+    def _get_main_psa_object(self) -> psa.SeasavePSAfile:
         return psa.SeasavePSAfile(self.ctd_config.seasave_psa_main_file)
 
     def update_xmlcon_in_main_psa_file(self, instrument):
         xmlcon_file_path = self.get_xmlcon_path(instrument)
-        psa_obj = self._get_main_psa_object()
-        psa_obj.xmlcon_path = xmlcon_file_path
-        psa_obj.save()
+        # psa_obj = self._get_main_psa_object()
+        self.seasave_psa.xmlcon_path = xmlcon_file_path
+        self.seasave_psa.save()
 
     def update_main_psa_file(self,
                              instrument=None,
@@ -174,39 +187,39 @@ class Controller:
         if not directory.exists():
             os.makedirs(directory)
 
-        psa_obj = self._get_main_psa_object()
-        psa_obj.data_path = hex_file_path
+        # psa_obj = self._get_main_psa_object()
+        self.seasave_psa.data_path = hex_file_path
 
         if depth:
-            psa_obj.display_depth = depth
+            self.seasave_psa.display_depth = depth
 
         if nr_bins:
-            psa_obj.nr_bins = nr_bins
+            self.seasave_psa.nr_bins = nr_bins
 
-        psa_obj.station = station
+        self.seasave_psa.station = station
 
-        psa_obj.operator = operator
+        self.seasave_psa.operator = operator
 
-        psa_obj.lims_job = lims_job or ''
+        self.seasave_psa.lims_job = lims_job or ''
 
         if ship_code:
-            psa_obj.ship = f'{self.ships.get_code(ship_code)} {self.ships.get_name(ship_code)}'
+            self.seasave_psa.ship = f'{self.ships.get_code(ship_code)} {self.ships.get_name(ship_code)}'
 
         if cruise_nr and ship_code and year:
-            psa_obj.cruise = f'{self.ships.get_code(ship_code)}-{year}-{cruise_nr.zfill(2)}'
+            self.seasave_psa.cruise = f'{self.ships.get_code(ship_code)}-{year}-{cruise_nr.zfill(2)}'
 
-        psa_obj.position = position
+        self.seasave_psa.position = position
 
-        psa_obj.pumps = pumps
+        self.seasave_psa.pumps = pumps
 
-        psa_obj.event_ids = event_ids
+        self.seasave_psa.event_ids = event_ids
 
-        psa_obj.add_samp = add_samp
+        self.seasave_psa.add_samp = add_samp
 
-        psa_obj.metadata_admin = metadata_admin
-        psa_obj.metadata_conditions = metadata_conditions
+        self.seasave_psa.metadata_admin = metadata_admin
+        self.seasave_psa.metadata_conditions = metadata_conditions
 
-        psa_obj.save()
+        self.seasave_psa.save()
 
     def get_data_file_path(self, instrument=None, cruise=None, ship=None, serno=None, tail=None):
         missing = []
@@ -299,6 +312,113 @@ class Controller:
         return pack_col.get_next_serno(**kwargs)
         # ctd_files_obj = get_ctd_files_object(root_path, suffix='.hex')
         # return ctd_files_obj.get_next_serno(**kwargs)
+
+    def get_pressure_mapping_for_station(self, station: str) -> dict[str, dict[int, float] | str | None]:
+        return self.auto_fire_station_pressure.get_depth_pressure_mapping_for_station(station)
+
+    def get_pressure_mapping_for_basin(self, basin: str) -> dict[str, dict[int, float] | str | None]:
+        return self.auto_fire_station_pressure.get_depth_pressure_mapping_for_basin(basin)
+
+    def get_current_auto_fire_bottles(self) -> psa.AUTO_FIRE_DATA_DATATYPE:
+        return self.seasave_psa.auto_fire_bottles
+
+    def get_bottle_order(self, nr_active_bottles: int, nr_bottles: int = 24) -> list[int]:
+        bottle_order = self.auto_fire_bottle_order.get_bottle_order(nr_bottles)
+        # return bottle_order[:nr_active_bottles][::-1]
+        return sorted(bottle_order[:nr_active_bottles], reverse=True)
+
+    def get_auto_fire_info_for_station(self, station: str, nr_bottles: int = 24, nr_active_bottles: int = None) -> psa.AUTO_FIRE_DATA_DATATYPE:
+        info = self.get_pressure_mapping_for_station(station)
+        if not nr_active_bottles:
+            nr_active_bottles = len([True for pres in info['pressure_mapping'].values() if pres])
+        new_pressure_mapping = {}
+        for depth, pres in info['pressure_mapping'].items():
+            if not pres:
+                continue
+            if len(new_pressure_mapping) >= nr_active_bottles:
+                break
+            new_pressure_mapping[depth] = pres
+        new_bottle_order = self.get_bottle_order(nr_active_bottles, nr_bottles=nr_bottles)
+        data = []
+        index = 0
+        for depth, pres in new_pressure_mapping.items():
+            #if not pres:
+            #    continue
+            try:
+                data.append(dict(
+                    depth=depth,
+                    index=index,
+                    # BottleNumber=bottle_order[index],
+                    BottleNumber=new_bottle_order[index],
+                    FireAt=pres
+                ))
+                index += 1
+            except IndexError:
+                break
+        return data, info['basin']
+
+    def set_auto_fire_bottles(self, data: psa.AUTO_FIRE_DATA_DATATYPE, station: str = None, basin: str = None) -> None:
+        if station:
+            info = self.get_pressure_mapping_for_station(station)
+        elif basin:
+            info = self.get_pressure_mapping_for_basin(basin)
+        else:
+            raise Exception('No station och basin given')
+        print('='*100)
+        print('='*100)
+        print(f'{info=}')
+        data_with_pressure = []
+        for i, d in enumerate(sorted(data, reverse=True, key=lambda x: x['depth'])):
+            offset = d.get('offset') or 0
+            row_data= dict(
+                index=i,
+                BottleNumber=d['BottleNumber'],
+                FireAt=info['pressure_mapping'][int(d['depth'])] + offset,
+                depth=d['depth']
+            )
+            data_with_pressure.append(row_data)
+        self._set_auto_fire_bottles(data_with_pressure)
+
+    def set_auto_fire_default_bottles_for_station(self, station: str):
+        data = self.get_auto_fire_info_for_station(station)
+        self._set_auto_fire_bottles(data)
+
+    def _set_auto_fire_bottles(self, data: psa.AUTO_FIRE_DATA_DATATYPE) -> None:
+        self.check_valid_auto_fire_data(data)
+        self.seasave_psa.auto_fire_bottles = data
+        # self.seasave_psa.save(path=r"C:\mw\git\ctd_config\SBE\seasave_psa\svea\Seasave_mod.psa")
+
+    def check_valid_auto_fire_data(self, data: psa.AUTO_FIRE_DATA_DATATYPE):
+
+        tot_nr_btl = self.seasave_psa.nr_of_water_bottles
+        if len(data) > tot_nr_btl:
+            raise exceptions.ToManyAutoFireDepths(f'Nr of depths are more than nr of water bottles')
+
+        bottles = [item['BottleNumber'] for item in data]
+        if len(bottles) != len(set(bottles)):
+            raise exceptions.DuplicatedAutoFireBottles
+
+    def enable_auto_fire(self):
+        self.seasave_psa.auto_fire = True
+
+    def disable_auto_fire(self):
+        self.seasave_psa.auto_fire = False
+
+    def set_auto_fire(self, value: bool):
+        print(f'set_auto_fire: {value=}')
+        self.seasave_psa.auto_fire = value
+        self.seasave_psa.auto_fire_allow_manual_firing = value
+
+    @property
+    def auto_fire_min_pressure_or_depth(self) -> str:
+        return self.seasave_psa.min_pressure_or_depth
+
+    @auto_fire_min_pressure_or_depth.setter
+    def auto_fire_min_pressure_or_depth(self, press: int | str | float):
+        self.seasave_psa.min_pressure_or_depth = press
+
+
+
 
 
 if __name__ == '__main__':
