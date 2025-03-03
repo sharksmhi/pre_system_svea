@@ -109,7 +109,8 @@ class Controller:
         t.start()
 
     def _subprocess_seasave(self):
-        subprocess.run([str(self.ctd_config.seasave_program_path), f'-p={self.ctd_config.seasave_psa_main_file}'])
+        # subprocess.run([str(self.ctd_config.seasave_program_path), f'-p={self.ctd_config.seasave_psa_main_file}'])
+        subprocess.run([str(self.ctd_config.seasave_program_path), f'-p={self.ctd_config.seasave_psa_main_file}', '-autofireondowncast'])
 
     def get_xmlcon_path(self, instrument):
         if instrument.lower() in ['sbe09', 'sbe9']:
