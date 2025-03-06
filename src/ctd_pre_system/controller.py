@@ -323,12 +323,16 @@ class Controller:
     def get_current_auto_fire_bottles(self) -> psa.AUTO_FIRE_DATA_DATATYPE:
         return self.seasave_psa.auto_fire_bottles
 
-    def get_bottle_order(self, nr_active_bottles: int, nr_bottles: int = 24) -> list[int]:
+    def get_bottle_order(self, nr_active_bottles: int, nr_bottles: int = 24, exclude_bottles: list[str|int] = None) -> list[int]:
         bottle_order = self.auto_fire_bottle_order.get_bottle_order(nr_bottles)
+        print(f'{bottle_order=}')
         # return bottle_order[:nr_active_bottles][::-1]
+        if exclude_bottles:
+            exclude_bottles = [int(x) for x in exclude_bottles]
+            bottle_order = [b for b in bottle_order if b not in exclude_bottles]
         return sorted(bottle_order[:nr_active_bottles], reverse=True)
 
-    def get_auto_fire_info_for_station(self, station: str, nr_bottles: int = 24, nr_active_bottles: int = None) -> psa.AUTO_FIRE_DATA_DATATYPE:
+    def get_auto_fire_info_for_station(self, station: str, nr_bottles: int = 24, nr_active_bottles: int = None, exclude_bottles: list[str|int] = None) -> psa.AUTO_FIRE_DATA_DATATYPE:
         info = self.get_pressure_mapping_for_station(station)
         if not nr_active_bottles:
             nr_active_bottles = len([True for pres in info['pressure_mapping'].values() if pres])
@@ -339,7 +343,7 @@ class Controller:
             if len(new_pressure_mapping) >= nr_active_bottles:
                 break
             new_pressure_mapping[depth] = pres
-        new_bottle_order = self.get_bottle_order(nr_active_bottles, nr_bottles=nr_bottles)
+        new_bottle_order = self.get_bottle_order(nr_active_bottles, nr_bottles=nr_bottles, exclude_bottles=exclude_bottles)
         data = []
         index = 0
         for depth, pres in new_pressure_mapping.items():
@@ -417,9 +421,6 @@ class Controller:
     @auto_fire_min_pressure_or_depth.setter
     def auto_fire_min_pressure_or_depth(self, press: int | str | float):
         self.seasave_psa.min_pressure_or_depth = press
-
-
-
 
 
 if __name__ == '__main__':
